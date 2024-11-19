@@ -1,3 +1,6 @@
+import sys
+sys.path.append("C:/Users/jaume/Documents/uni/any3/semestre1/IA/ia_2024")
+
 import logging
 
 from reinforcement.agent import AgentQ

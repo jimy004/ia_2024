@@ -56,6 +56,7 @@ class AgentQ(AbstractModel):
             selected action
         """
         q = self.q(percepcio["POS"])
+        self.print_Q()
 
         actions = np.nonzero(q == np.max(q))[
             0
@@ -221,43 +222,37 @@ class AgentQ(AbstractModel):
         for episode in range(1, episodes + 1):
 
             state = self.environment.reset()
+            # elegir acción usando política epsilon-greedy
+            if np.random.random() < exploration_rate:
+                action = random.choice(self.environment.actions)
+            else:
+                action = self.predict(state)
 
+            # Dentro del bucle de entrenamiento
             while True:
-                # choose action epsilon greedy
-                if np.random.random() < exploration_rate:
-                    action = random.choice(self.environment.actions)
-                else:
-                    action = self.predict(state)
-
                 next_state, reward, status = self.environment._aplica(action)
                 cumulative_reward += reward
 
-                if (
-                        state,
-                        action,
-                ) not in self.Q.keys():  # ensure value exists for (state, action)
-                    # to avoid a KeyError
+                # Asegurarse de que exista una entrada para Q[state, action]
+                if (state, action) not in self.Q:
                     self.Q[(state, action)] = 0.0
 
-                # FORA POLÍTICA!
-                max_next_Q = 0
-                for a in self.environment.actions:
-                    if (next_state, a) in self.Q and self.Q[
-                        (next_state, a)
-                    ] > max_next_Q:
-                        max_next_Q = self.Q[(next_state, a)]
+                # Elegir la próxima acción siguiendo la misma política
+                if np.random.random() < exploration_rate:
+                    next_action = random.choice(self.environment.actions)
+                else:
+                    next_action = self.predict(next_state)
 
+                # Actualizar Q usando la fórmula SARSA
                 self.Q[(state, action)] = self.Q[(state, action)] + learning_rate * (
-                        reward + discount * max_next_Q - self.Q[(state, action)]
+                        reward + discount * self.Q.get((next_state, next_action), 0.0) - self.Q[(state, action)]
                 )
 
-                if status in (
-                        Status.WIN,
-                        Status.LOSE,
-                ):  # terminal state reached, stop episode
+                if status in (Status.WIN, Status.LOSE):  # estado terminal
                     break
 
                 state = next_state
+                action= next_action
 
             cumulative_reward_history.append(cumulative_reward)
 
